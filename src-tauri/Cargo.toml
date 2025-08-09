@@ -53,7 +53,8 @@ tauri-plugin-os = "2"
 enigo = "0.5.0"
 tauri-plugin-process = "2"
 rodio = { git = "https://github.com/cjpais/rodio.git" }
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.11", features = ["json", "stream", "multipart"] }
+base64 = "0.22"
 futures-util = "0.3"
 tauri-plugin-fs = "2"
 rustfft = "6.4.0"

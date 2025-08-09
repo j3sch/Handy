@@ -10,6 +10,7 @@ import { TranslateToEnglish } from "./TranslateToEnglish";
 import { LanguageSelector } from "./LanguageSelector";
 import { SettingsGroup } from "../ui/SettingsGroup";
 import { DebugSettings } from "./debug";
+import MistralApiSettings from "./MistralApiSettings";
 import { useSettings } from "../../hooks/useSettings";
 
 export const Settings: React.FC = () => {
@@ -55,6 +56,10 @@ export const Settings: React.FC = () => {
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
         <TranslateToEnglish descriptionMode="tooltip" grouped={true} />
         <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
+      </SettingsGroup>
+
+      <SettingsGroup title="API Settings">
+        <MistralApiSettings />
       </SettingsGroup>
 
       {settings?.debug_mode && (

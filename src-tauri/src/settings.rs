@@ -42,6 +42,10 @@ pub struct AppSettings {
     pub overlay_position: OverlayPosition,
     #[serde(default = "default_debug_mode")]
     pub debug_mode: bool,
+    #[serde(default)]
+    pub mistral_api_key: Option<String>,
+    #[serde(default = "default_transcription_provider")]
+    pub transcription_provider: String,
 }
 
 fn default_model() -> String {
@@ -66,6 +70,11 @@ fn default_overlay_position() -> OverlayPosition {
 
 fn default_debug_mode() -> bool {
     false
+}
+
+fn default_transcription_provider() -> String {
+    // Default to local for backward compatibility
+    "local".to_string()
 }
 
 pub const SETTINGS_STORE_PATH: &str = "settings_store.json";
@@ -104,6 +113,8 @@ pub fn get_default_settings() -> AppSettings {
         selected_language: "auto".to_string(),
         overlay_position: OverlayPosition::Bottom,
         debug_mode: false,
+        mistral_api_key: None,
+        transcription_provider: "local".to_string(),
     }
 }
 

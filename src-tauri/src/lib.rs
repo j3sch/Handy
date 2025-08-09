@@ -211,7 +211,10 @@ pub fn run() {
             commands::audio::get_selected_microphone,
             commands::audio::get_available_output_devices,
             commands::audio::set_selected_output_device,
-            commands::audio::get_selected_output_device
+            commands::audio::get_selected_output_device,
+            commands::api::set_mistral_api_key,
+            commands::api::get_mistral_api_key,
+            commands::api::has_mistral_api_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

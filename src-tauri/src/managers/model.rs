@@ -114,6 +114,22 @@ impl ModelManager {
             },
         );
 
+        // Add Mistral Voxtral Mini Transcribe model (API-based)
+        available_models.insert(
+            "voxtral-mini".to_string(),
+            ModelInfo {
+                id: "voxtral-mini".to_string(),
+                name: "Voxtral Mini Transcribe (API)".to_string(),
+                description: "Fast cloud transcription via Mistral API - requires API key".to_string(),
+                filename: "".to_string(), // No file needed for API model
+                url: None,
+                size_mb: 0,
+                is_downloaded: true, // Always available when API key is set
+                is_downloading: false,
+                partial_size: 0,
+            },
+        );
+
         let manager = Self {
             app_handle,
             models_dir,
@@ -173,6 +189,11 @@ impl ModelManager {
         let mut models = self.available_models.lock().unwrap();
 
         for model in models.values_mut() {
+            // Skip API-based models
+            if model.id == "voxtral-mini" {
+                continue;
+            }
+
             let model_path = self.models_dir.join(&model.filename);
             let partial_path = self.models_dir.join(format!("{}.partial", &model.filename));
 
@@ -433,6 +454,11 @@ impl ModelManager {
     }
 
     pub fn get_model_path(&self, model_id: &str) -> Result<PathBuf> {
+        // API-based models don't have local files
+        if model_id == "voxtral-mini" {
+            return Ok(PathBuf::new()); // Return empty path for API models
+        }
+
         let model_info = self
             .get_model_info(model_id)
             .ok_or_else(|| anyhow::anyhow!("Model not found: {}", model_id))?;

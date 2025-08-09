@@ -34,6 +34,8 @@ export const SettingsSchema = z.object({
   selected_language: z.string(),
   overlay_position: OverlayPositionSchema,
   debug_mode: z.boolean(),
+  mistral_api_key: z.string().nullable().optional(),
+  transcription_provider: z.string().optional(),
 });
 
 export const BindingResponseSchema = z.object({

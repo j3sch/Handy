@@ -1,3 +1,4 @@
+use crate::managers::mistral::MistralApiManager;
 use crate::managers::model::ModelManager;
 use crate::settings::get_settings;
 use anyhow::Result;
@@ -8,6 +9,7 @@ use whisper_rs::install_whisper_log_trampoline;
 use whisper_rs::{
     FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState,
 };
+use log::{debug, info, error, warn};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ModelStateEvent {
@@ -21,6 +23,7 @@ pub struct TranscriptionManager {
     state: Mutex<Option<WhisperState>>,
     context: Mutex<Option<WhisperContext>>,
     model_manager: Arc<ModelManager>,
+    mistral_manager: MistralApiManager,
     app_handle: AppHandle,
     current_model_id: Mutex<Option<String>>,
 }
@@ -33,6 +36,7 @@ impl TranscriptionManager {
             state: Mutex::new(None),
             context: Mutex::new(None),
             model_manager,
+            mistral_manager: MistralApiManager::new(app_handle.clone()),
             app_handle: app_handle.clone(),
             current_model_id: Mutex::new(None),
         };
@@ -45,6 +49,27 @@ impl TranscriptionManager {
     }
 
     pub fn load_model(&self, model_id: &str) -> Result<()> {
+        info!("[TranscriptionManager] Loading model: {}", model_id);
+        
+        // If the selected model is an API-based model, we don't need to load anything
+        if model_id == "voxtral-mini" {
+            info!("[TranscriptionManager] Selected Voxtral Mini (Mistral API) model");
+            let mut current_model = self.current_model_id.lock().unwrap();
+            *current_model = Some(model_id.to_string());
+            info!("[TranscriptionManager] Current model set to: {:?}", *current_model);
+            
+            // Emit loading completed event for API model
+            let _ = self.app_handle.emit(
+                "model-state-changed",
+                ModelStateEvent {
+                    event_type: "loading_completed".to_string(),
+                    model_id: Some(model_id.to_string()),
+                    model_name: Some("Voxtral Mini Transcribe (API)".to_string()),
+                    error: None,
+                },
+            );
+            return Ok(());
+        }
         // Emit loading started event
         let _ = self.app_handle.emit(
             "model-state-changed",
@@ -155,15 +180,35 @@ impl TranscriptionManager {
         current_model.clone()
     }
 
-    pub fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
+    pub async fn transcribe(&self, audio: Vec<f32>) -> Result<String> {
         let st = std::time::Instant::now();
 
         let mut result = String::new();
-        println!("Audio vector length: {}", audio.len());
+        info!("[TranscriptionManager] Starting transcription with audio vector length: {}", audio.len());
 
         if audio.len() == 0 {
-            println!("Empty audio vector");
+            warn!("[TranscriptionManager] Empty audio vector received");
             return Ok(result);
+        }
+
+        // Check if the current model is the API-based model
+        let current_model = self.get_current_model();
+        info!("[TranscriptionManager] Current model: {:?}", current_model);
+        
+        if current_model == Some("voxtral-mini".to_string()) {
+            info!("[TranscriptionManager] Using Voxtral Mini Transcribe API for transcription");
+            match self.mistral_manager.transcribe(audio).await {
+                Ok(text) => {
+                    info!("[TranscriptionManager] Mistral API transcription successful: {}", text);
+                    let et = std::time::Instant::now();
+                    info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
+                    return Ok(text);
+                },
+                Err(e) => {
+                    error!("[TranscriptionManager] Mistral API transcription failed: {}", e);
+                    return Err(e);
+                }
+            }
         }
 
         let mut state_guard = self.state.lock().unwrap();

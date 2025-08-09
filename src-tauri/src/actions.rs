@@ -101,7 +101,7 @@ impl ShortcutAction for TranscribeAction {
                 );
 
                 let transcription_time = Instant::now();
-                match tm.transcribe(samples) {
+                match tm.transcribe(samples).await {
                     Ok(transcription) => {
                         debug!(
                             "Transcription completed in {:?}: '{}'",

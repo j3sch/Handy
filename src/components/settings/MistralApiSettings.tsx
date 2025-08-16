@@ -61,7 +61,7 @@ const MistralApiSettings: React.FC<MistralApiSettingsProps> = ({ onApiKeySet }) 
 
   return (
     <SettingContainer
-      label="Mistral API Key"
+      title="Mistral API Key"
       description="Required for Voxtral Mini Transcribe model"
     >
       <div className="space-y-2">

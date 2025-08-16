@@ -8,8 +8,10 @@ import { ShowOverlay } from "./ShowOverlay";
 import { HandyShortcut } from "./HandyShortcut";
 import { TranslateToEnglish } from "./TranslateToEnglish";
 import { LanguageSelector } from "./LanguageSelector";
+import { CustomWords } from "./CustomWords";
 import { SettingsGroup } from "../ui/SettingsGroup";
-import { DebugSettings } from "./debug";
+import { WordCorrectionThreshold } from "./debug/WordCorrectionThreshold";
+import { AppDataDirectory } from "./AppDataDirectory";
 import MistralApiSettings from "./MistralApiSettings";
 import { useSettings } from "../../hooks/useSettings";
 
@@ -55,6 +57,7 @@ export const Settings: React.FC = () => {
         <OutputDeviceSelector descriptionMode="tooltip" grouped={true} />
         <ShowOverlay descriptionMode="tooltip" grouped={true} />
         <TranslateToEnglish descriptionMode="tooltip" grouped={true} />
+        <CustomWords descriptionMode="tooltip" grouped />
         <AlwaysOnMicrophone descriptionMode="tooltip" grouped={true} />
       </SettingsGroup>
 
@@ -64,7 +67,8 @@ export const Settings: React.FC = () => {
 
       {settings?.debug_mode && (
         <SettingsGroup title="Debug">
-          <DebugSettings descriptionMode="tooltip" grouped={true} />
+          <WordCorrectionThreshold descriptionMode="tooltip" grouped={true} />
+          <AppDataDirectory descriptionMode="tooltip" grouped={true} />
         </SettingsGroup>
       )}
     </div>

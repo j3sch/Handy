@@ -1,6 +1,6 @@
 # Handy
 
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)]([https://discord.gg/your-invite-link](https://discord.gg/WVBeWsNXK4))
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/invite/WVBeWsNXK4)
 
 **A free, open source, and extensible speech-to-text application that works completely offline.**
 
@@ -44,6 +44,7 @@ The process is entirely local:
 **Prerequisites:**
 - [Rust](https://rustup.rs/) (latest stable)
 - [Bun](https://bun.sh/) package manager
+- [Tauri Prerequisites](https://tauri.app/start/prerequisites/)
 - Platform-specific requirements:
   - **macOS**: Xcode Command Line Tools
   - **Windows**: Microsoft C++ Build Tools
@@ -67,23 +68,6 @@ CMAKE_POLICY_VERSION_MINIMUM=3.5 bun run tauri dev
 # Build for production
 bun run tauri build
 ```
-
-**Model Files Setup:**
-
-For development, you need to download the required model files:
-
-1. Create the models directory inside the resources folder:
-   ```bash
-   mkdir -p src-tauri/resources/models
-   ```
-
-2. Download the required VAD model for development:
-   ```bash
-   # Download Silero VAD model (required for voice activity detection)
-   curl -o src-tauri/resources/models/silero_vad_v4.onnx https://blob.handy.computer/silero_vad_v4.onnx
-   ```
-
-   **Note:** Whisper models are no longer bundled with the app. Users will download their preferred model (Small, Medium, Turbo, or Large) from within the app on first run.
 
 **Whisper Models:**
 

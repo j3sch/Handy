@@ -41,7 +41,6 @@ const RecordingOverlay: React.FC = () => {
         });
 
         smoothedLevelsRef.current = smoothed;
-        console.log(smoothed.length);
         setLevels(smoothed.slice(0, 9));
       });
 

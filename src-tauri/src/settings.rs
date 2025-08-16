@@ -43,6 +43,10 @@ pub struct AppSettings {
     #[serde(default = "default_debug_mode")]
     pub debug_mode: bool,
     #[serde(default)]
+    pub custom_words: Vec<String>,
+    #[serde(default = "default_word_correction_threshold")]
+    pub word_correction_threshold: f64,
+    #[serde(default)]
     pub mistral_api_key: Option<String>,
     #[serde(default = "default_transcription_provider")]
     pub transcription_provider: String,
@@ -72,6 +76,10 @@ fn default_debug_mode() -> bool {
     false
 }
 
+fn default_word_correction_threshold() -> f64 {
+    0.15
+}
+
 fn default_transcription_provider() -> String {
     // Default to local for backward compatibility
     "local".to_string()
@@ -83,7 +91,7 @@ pub fn get_default_settings() -> AppSettings {
     #[cfg(target_os = "windows")]
     let default_shortcut = "ctrl+space";
     #[cfg(target_os = "macos")]
-    let default_shortcut = "alt+space";
+    let default_shortcut = "option+space";
     #[cfg(target_os = "linux")]
     let default_shortcut = "ctrl+space";
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
@@ -113,6 +121,8 @@ pub fn get_default_settings() -> AppSettings {
         selected_language: "auto".to_string(),
         overlay_position: OverlayPosition::Bottom,
         debug_mode: false,
+        custom_words: Vec::new(),
+        word_correction_threshold: default_word_correction_threshold(),
         mistral_api_key: None,
         transcription_provider: "local".to_string(),
     }

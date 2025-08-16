@@ -34,6 +34,8 @@ export const SettingsSchema = z.object({
   selected_language: z.string(),
   overlay_position: OverlayPositionSchema,
   debug_mode: z.boolean(),
+  custom_words: z.array(z.string()).optional().default([]),
+  word_correction_threshold: z.number().optional().default(0.15),
   mistral_api_key: z.string().nullable().optional(),
   transcription_provider: z.string().optional(),
 });

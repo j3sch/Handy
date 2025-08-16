@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { TextDisplay, SettingsGroup } from "../../ui";
+import { TextDisplay } from "../ui";
 
-interface DebugPathsProps {
+interface AppDataDirectoryProps {
   descriptionMode?: "tooltip" | "inline";
   grouped?: boolean;
 }
 
-export const DebugPaths: React.FC<DebugPathsProps> = ({
+export const AppDataDirectory: React.FC<AppDataDirectoryProps> = ({
   descriptionMode = "inline",
   grouped = false,
 }) => {
@@ -16,18 +16,20 @@ export const DebugPaths: React.FC<DebugPathsProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadPaths = async () => {
+    const loadAppDirectory = async () => {
       try {
         const result = await invoke<string>("get_app_dir_path");
         setAppDirPath(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load paths");
+        setError(
+          err instanceof Error ? err.message : "Failed to load app directory",
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    loadPaths();
+    loadAppDirectory();
   }, []);
 
   const handleCopy = (value: string) => {
@@ -37,11 +39,9 @@ export const DebugPaths: React.FC<DebugPathsProps> = ({
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-          <div className="h-8 bg-gray-100 rounded"></div>
-        </div>
+      <div className="animate-pulse">
+        <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+        <div className="h-8 bg-gray-100 rounded"></div>
       </div>
     );
   }
@@ -49,7 +49,9 @@ export const DebugPaths: React.FC<DebugPathsProps> = ({
   if (error) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <p className="text-red-600 text-sm">Error loading paths: {error}</p>
+        <p className="text-red-600 text-sm">
+          Error loading app directory: {error}
+        </p>
       </div>
     );
   }
@@ -60,7 +62,7 @@ export const DebugPaths: React.FC<DebugPathsProps> = ({
       description="Main directory where application data, settings, and models are stored"
       value={appDirPath}
       descriptionMode={descriptionMode}
-      grouped={true}
+      grouped={grouped}
       copyable={true}
       monospace={true}
       onCopy={handleCopy}

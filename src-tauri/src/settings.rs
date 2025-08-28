@@ -79,7 +79,7 @@ fn default_debug_mode() -> bool {
 }
 
 fn default_word_correction_threshold() -> f64 {
-    0.15
+    0.18
 }
 
 fn default_transcription_provider() -> String {

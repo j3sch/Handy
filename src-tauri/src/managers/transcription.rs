@@ -1,3 +1,4 @@
+use crate::managers::deepgram::DeepgramApiManager;
 use crate::managers::mistral::MistralApiManager;
 use crate::managers::model::ModelManager;
 use crate::settings::get_settings;
@@ -11,7 +12,7 @@ use whisper_rs::install_whisper_log_trampoline;
 use whisper_rs::{
     FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState,
 };
-use log::{debug, info, error, warn};
+use log::{info, error, warn};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct ModelStateEvent {
@@ -26,6 +27,7 @@ pub struct TranscriptionManager {
     context: Mutex<Option<WhisperContext>>,
     model_manager: Arc<ModelManager>,
     mistral_manager: MistralApiManager,
+    deepgram_manager: DeepgramApiManager,
     app_handle: AppHandle,
     current_model_id: Mutex<Option<String>>,
 }
@@ -147,6 +149,7 @@ impl TranscriptionManager {
             context: Mutex::new(None),
             model_manager,
             mistral_manager: MistralApiManager::new(app_handle.clone()),
+            deepgram_manager: DeepgramApiManager::new(app_handle.clone()),
             app_handle: app_handle.clone(),
             current_model_id: Mutex::new(None),
         };
@@ -175,6 +178,25 @@ impl TranscriptionManager {
                     event_type: "loading_completed".to_string(),
                     model_id: Some(model_id.to_string()),
                     model_name: Some("Voxtral Mini Transcribe (API)".to_string()),
+                    error: None,
+                },
+            );
+            return Ok(());
+        }
+        
+        if model_id == "nova-3" {
+            info!("[TranscriptionManager] Selected Nova-3 (Deepgram API) model");
+            let mut current_model = self.current_model_id.lock().unwrap();
+            *current_model = Some(model_id.to_string());
+            info!("[TranscriptionManager] Current model set to: {:?}", *current_model);
+            
+            // Emit loading completed event for API model
+            let _ = self.app_handle.emit(
+                "model-state-changed",
+                ModelStateEvent {
+                    event_type: "loading_completed".to_string(),
+                    model_id: Some(model_id.to_string()),
+                    model_name: Some("Nova-3 (Deepgram API)".to_string()),
                     error: None,
                 },
             );
@@ -316,6 +338,22 @@ impl TranscriptionManager {
                 },
                 Err(e) => {
                     error!("[TranscriptionManager] Mistral API transcription failed: {}", e);
+                    return Err(e);
+                }
+            }
+        }
+        
+        if current_model == Some("nova-3".to_string()) {
+            info!("[TranscriptionManager] Using Nova-3 (Deepgram API) for transcription");
+            match self.deepgram_manager.transcribe(audio).await {
+                Ok(text) => {
+                    info!("[TranscriptionManager] Deepgram API transcription successful: {}", text);
+                    let et = std::time::Instant::now();
+                    info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
+                    return Ok(text);
+                },
+                Err(e) => {
+                    error!("[TranscriptionManager] Deepgram API transcription failed: {}", e);
                     return Err(e);
                 }
             }

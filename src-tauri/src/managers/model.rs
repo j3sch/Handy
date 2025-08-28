@@ -130,6 +130,22 @@ impl ModelManager {
             },
         );
 
+        // Add Deepgram Nova-3 model (API-based)
+        available_models.insert(
+            "nova-3".to_string(),
+            ModelInfo {
+                id: "nova-3".to_string(),
+                name: "Nova-3 (Deepgram API)".to_string(),
+                description: "High-accuracy cloud transcription via Deepgram API - requires API key".to_string(),
+                filename: "".to_string(), // No file needed for API model
+                url: None,
+                size_mb: 0,
+                is_downloaded: true, // Always available when API key is set
+                is_downloading: false,
+                partial_size: 0,
+            },
+        );
+
         let manager = Self {
             app_handle,
             models_dir,
@@ -190,7 +206,7 @@ impl ModelManager {
 
         for model in models.values_mut() {
             // Skip API-based models
-            if model.id == "voxtral-mini" {
+            if model.id == "voxtral-mini" || model.id == "nova-3" {
                 continue;
             }
 
@@ -455,7 +471,7 @@ impl ModelManager {
 
     pub fn get_model_path(&self, model_id: &str) -> Result<PathBuf> {
         // API-based models don't have local files
-        if model_id == "voxtral-mini" {
+        if model_id == "voxtral-mini" || model_id == "nova-3" {
             return Ok(PathBuf::new()); // Return empty path for API models
         }
 

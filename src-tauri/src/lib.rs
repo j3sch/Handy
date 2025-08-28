@@ -69,7 +69,6 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_macos_permissions::init())
@@ -216,7 +215,10 @@ pub fn run() {
             commands::audio::get_selected_output_device,
             commands::api::set_mistral_api_key,
             commands::api::get_mistral_api_key,
-            commands::api::has_mistral_api_key
+            commands::api::has_mistral_api_key,
+            commands::api::set_deepgram_api_key,
+            commands::api::get_deepgram_api_key,
+            commands::api::has_deepgram_api_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

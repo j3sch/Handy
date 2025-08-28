@@ -48,6 +48,8 @@ pub struct AppSettings {
     pub word_correction_threshold: f64,
     #[serde(default)]
     pub mistral_api_key: Option<String>,
+    #[serde(default)]
+    pub deepgram_api_key: Option<String>,
     #[serde(default = "default_transcription_provider")]
     pub transcription_provider: String,
 }
@@ -124,6 +126,7 @@ pub fn get_default_settings() -> AppSettings {
         custom_words: Vec::new(),
         word_correction_threshold: default_word_correction_threshold(),
         mistral_api_key: None,
+        deepgram_api_key: None,
         transcription_provider: "local".to_string(),
     }
 }

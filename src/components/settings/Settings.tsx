@@ -13,6 +13,7 @@ import { SettingsGroup } from "../ui/SettingsGroup";
 import { WordCorrectionThreshold } from "./debug/WordCorrectionThreshold";
 import { AppDataDirectory } from "./AppDataDirectory";
 import MistralApiSettings from "./MistralApiSettings";
+import DeepgramApiSettings from "./DeepgramApiSettings";
 import { useSettings } from "../../hooks/useSettings";
 
 export const Settings: React.FC = () => {
@@ -63,6 +64,7 @@ export const Settings: React.FC = () => {
 
       <SettingsGroup title="API Settings">
         <MistralApiSettings />
+        <DeepgramApiSettings />
       </SettingsGroup>
 
       {settings?.debug_mode && (

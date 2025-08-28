@@ -37,6 +37,7 @@ export const SettingsSchema = z.object({
   custom_words: z.array(z.string()).optional().default([]),
   word_correction_threshold: z.number().optional().default(0.15),
   mistral_api_key: z.string().nullable().optional(),
+  deepgram_api_key: z.string().nullable().optional(),
   transcription_provider: z.string().optional(),
 });
 

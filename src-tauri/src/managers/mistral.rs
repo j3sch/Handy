@@ -3,7 +3,7 @@ use anyhow::Result;
 use reqwest::multipart;
 use serde::Deserialize;
 use tauri::AppHandle;
-use log::{debug, info, error, warn};
+use log::{debug, info, error};
 
 #[derive(Debug, Deserialize)]
 struct MistralTranscriptionResponse {

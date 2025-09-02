@@ -107,7 +107,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                   {currentModelId === model.id && (
                     <div className="text-xs text-logo-primary">Active</div>
                   )}
-                  {currentModelId !== model.id && !["voxtral-mini", "nova-3"].includes(model.id) && (
+                  {currentModelId !== model.id && !["voxtral-mini", "nova-3", "universal"].includes(model.id) && (
                     <button
                       onClick={(e) => handleDeleteClick(e, model.id)}
                       className="text-red-400 hover:text-red-300 p-1 hover:bg-red-500/10 rounded transition-colors"
@@ -126,7 +126,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                       </svg>
                     </button>
                   )}
-                  {currentModelId !== model.id && ["voxtral-mini", "nova-3"].includes(model.id) && (
+                  {currentModelId !== model.id && ["voxtral-mini", "nova-3", "universal"].includes(model.id) && (
                     <div className="text-xs text-text/40">API</div>
                   )}
                 </div>

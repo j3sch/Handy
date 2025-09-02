@@ -1,3 +1,4 @@
+pub mod assemblyai;
 pub mod audio;
 pub mod deepgram;
 pub mod mistral;

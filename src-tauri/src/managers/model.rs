@@ -146,6 +146,22 @@ impl ModelManager {
             },
         );
 
+        // Add AssemblyAI Universal model (API-based)
+        available_models.insert(
+            "universal".to_string(),
+            ModelInfo {
+                id: "universal".to_string(),
+                name: "Universal (AssemblyAI API)".to_string(),
+                description: "Universal speech recognition via AssemblyAI API - requires API key".to_string(),
+                filename: "".to_string(), // No file needed for API model
+                url: None,
+                size_mb: 0,
+                is_downloaded: true, // Always available when API key is set
+                is_downloading: false,
+                partial_size: 0,
+            },
+        );
+
         let manager = Self {
             app_handle,
             models_dir,

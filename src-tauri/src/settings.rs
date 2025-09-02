@@ -50,6 +50,8 @@ pub struct AppSettings {
     pub mistral_api_key: Option<String>,
     #[serde(default)]
     pub deepgram_api_key: Option<String>,
+    #[serde(default)]
+    pub assemblyai_api_key: Option<String>,
     #[serde(default = "default_transcription_provider")]
     pub transcription_provider: String,
 }
@@ -127,6 +129,7 @@ pub fn get_default_settings() -> AppSettings {
         word_correction_threshold: default_word_correction_threshold(),
         mistral_api_key: None,
         deepgram_api_key: None,
+        assemblyai_api_key: None,
         transcription_provider: "local".to_string(),
     }
 }

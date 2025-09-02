@@ -15,6 +15,7 @@ import { AppDataDirectory } from "./AppDataDirectory";
 import MistralApiSettings from "./MistralApiSettings";
 import DeepgramApiSettings from "./DeepgramApiSettings";
 import AssemblyAIApiSettings from "./AssemblyAIApiSettings";
+import GladiaApiSettings from "./GladiaApiSettings";
 import { useSettings } from "../../hooks/useSettings";
 
 export const Settings: React.FC = () => {
@@ -67,6 +68,7 @@ export const Settings: React.FC = () => {
         <MistralApiSettings />
         <DeepgramApiSettings />
         <AssemblyAIApiSettings />
+        <GladiaApiSettings />
       </SettingsGroup>
 
       {settings?.debug_mode && (

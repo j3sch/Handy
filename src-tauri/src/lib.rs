@@ -221,7 +221,10 @@ pub fn run() {
             commands::api::has_deepgram_api_key,
             commands::api::set_assemblyai_api_key,
             commands::api::get_assemblyai_api_key,
-            commands::api::has_assemblyai_api_key
+            commands::api::has_assemblyai_api_key,
+            commands::api::set_gladia_api_key,
+            commands::api::get_gladia_api_key,
+            commands::api::has_gladia_api_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,6 @@
 use crate::managers::assemblyai::AssemblyAIApiManager;
 use crate::managers::deepgram::DeepgramApiManager;
+use crate::managers::gladia::GladiaApiManager;
 use crate::managers::mistral::MistralApiManager;
 use crate::managers::model::ModelManager;
 use crate::settings::get_settings;
@@ -29,6 +30,7 @@ pub struct TranscriptionManager {
     mistral_manager: MistralApiManager,
     deepgram_manager: DeepgramApiManager,
     assemblyai_manager: AssemblyAIApiManager,
+    gladia_manager: GladiaApiManager,
     app_handle: AppHandle,
     current_model_id: Mutex<Option<String>>,
 }
@@ -152,6 +154,7 @@ impl TranscriptionManager {
             mistral_manager: MistralApiManager::new(app_handle.clone()),
             deepgram_manager: DeepgramApiManager::new(app_handle.clone()),
             assemblyai_manager: AssemblyAIApiManager::new(app_handle.clone()),
+            gladia_manager: GladiaApiManager::new(app_handle.clone()),
             app_handle: app_handle.clone(),
             current_model_id: Mutex::new(None),
         };
@@ -218,6 +221,25 @@ impl TranscriptionManager {
                     event_type: "loading_completed".to_string(),
                     model_id: Some(model_id.to_string()),
                     model_name: Some("Universal (AssemblyAI API)".to_string()),
+                    error: None,
+                },
+            );
+            return Ok(());
+        }
+        
+        if model_id == "whisper-zero" {
+            info!("[TranscriptionManager] Selected Whisper-Zero (Gladia API) model");
+            let mut current_model = self.current_model_id.lock().unwrap();
+            *current_model = Some(model_id.to_string());
+            info!("[TranscriptionManager] Current model set to: {:?}", *current_model);
+            
+            // Emit loading completed event for API model
+            let _ = self.app_handle.emit(
+                "model-state-changed",
+                ModelStateEvent {
+                    event_type: "loading_completed".to_string(),
+                    model_id: Some(model_id.to_string()),
+                    model_name: Some("Whisper-Zero (Gladia API)".to_string()),
                     error: None,
                 },
             );
@@ -352,7 +374,20 @@ impl TranscriptionManager {
                     info!("[TranscriptionManager] Mistral API transcription successful: {}", text);
                     let et = std::time::Instant::now();
                     info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
-                    return Ok(text);
+                    
+                    // Apply custom words correction
+                    let settings = get_settings(&self.app_handle);
+                    let corrected_result = if !settings.custom_words.is_empty() {
+                        apply_custom_words(
+                            &text,
+                            &settings.custom_words,
+                            settings.word_correction_threshold,
+                        )
+                    } else {
+                        text
+                    };
+                    
+                    return Ok(corrected_result.trim().to_string());
                 },
                 Err(e) => {
                     error!("[TranscriptionManager] Mistral API transcription failed: {}", e);
@@ -368,7 +403,20 @@ impl TranscriptionManager {
                     info!("[TranscriptionManager] Deepgram API transcription successful: {}", text);
                     let et = std::time::Instant::now();
                     info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
-                    return Ok(text);
+                    
+                    // Apply custom words correction
+                    let settings = get_settings(&self.app_handle);
+                    let corrected_result = if !settings.custom_words.is_empty() {
+                        apply_custom_words(
+                            &text,
+                            &settings.custom_words,
+                            settings.word_correction_threshold,
+                        )
+                    } else {
+                        text
+                    };
+                    
+                    return Ok(corrected_result.trim().to_string());
                 },
                 Err(e) => {
                     error!("[TranscriptionManager] Deepgram API transcription failed: {}", e);
@@ -384,10 +432,52 @@ impl TranscriptionManager {
                     info!("[TranscriptionManager] AssemblyAI API transcription successful: {}", text);
                     let et = std::time::Instant::now();
                     info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
-                    return Ok(text);
+                    
+                    // Apply custom words correction
+                    let settings = get_settings(&self.app_handle);
+                    let corrected_result = if !settings.custom_words.is_empty() {
+                        apply_custom_words(
+                            &text,
+                            &settings.custom_words,
+                            settings.word_correction_threshold,
+                        )
+                    } else {
+                        text
+                    };
+                    
+                    return Ok(corrected_result.trim().to_string());
                 },
                 Err(e) => {
                     error!("[TranscriptionManager] AssemblyAI API transcription failed: {}", e);
+                    return Err(e);
+                }
+            }
+        }
+        
+        if current_model == Some("whisper-zero".to_string()) {
+            info!("[TranscriptionManager] Using Whisper-Zero (Gladia API) for transcription");
+            match self.gladia_manager.transcribe(audio).await {
+                Ok(text) => {
+                    info!("[TranscriptionManager] Gladia API transcription successful: {}", text);
+                    let et = std::time::Instant::now();
+                    info!("[TranscriptionManager] Transcription took {}ms", (et - st).as_millis());
+                    
+                    // Apply custom words correction
+                    let settings = get_settings(&self.app_handle);
+                    let corrected_result = if !settings.custom_words.is_empty() {
+                        apply_custom_words(
+                            &text,
+                            &settings.custom_words,
+                            settings.word_correction_threshold,
+                        )
+                    } else {
+                        text
+                    };
+                    
+                    return Ok(corrected_result.trim().to_string());
+                },
+                Err(e) => {
+                    error!("[TranscriptionManager] Gladia API transcription failed: {}", e);
                     return Err(e);
                 }
             }

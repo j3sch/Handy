@@ -53,7 +53,7 @@ pub async fn set_active_model(
         .ok_or_else(|| format!("Model not found: {}", model_id))?;
 
     // API models are always "downloaded" (available when API key is set)
-    if !model_info.is_downloaded && !["voxtral-mini", "nova-3", "universal"].contains(&model_id.as_str()) {
+    if !model_info.is_downloaded && !["voxtral-mini", "nova-3", "universal", "whisper-zero"].contains(&model_id.as_str()) {
         return Err(format!("Model not downloaded: {}", model_id));
     }
 

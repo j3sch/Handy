@@ -52,6 +52,8 @@ pub struct AppSettings {
     pub deepgram_api_key: Option<String>,
     #[serde(default)]
     pub assemblyai_api_key: Option<String>,
+    #[serde(default)]
+    pub gladia_api_key: Option<String>,
     #[serde(default = "default_transcription_provider")]
     pub transcription_provider: String,
 }
@@ -130,6 +132,7 @@ pub fn get_default_settings() -> AppSettings {
         mistral_api_key: None,
         deepgram_api_key: None,
         assemblyai_api_key: None,
+        gladia_api_key: None,
         transcription_provider: "local".to_string(),
     }
 }

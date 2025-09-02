@@ -38,6 +38,8 @@ export const SettingsSchema = z.object({
   word_correction_threshold: z.number().optional().default(0.18),
   mistral_api_key: z.string().nullable().optional(),
   deepgram_api_key: z.string().nullable().optional(),
+  assemblyai_api_key: z.string().nullable().optional(),
+  gladia_api_key: z.string().nullable().optional(),
   transcription_provider: z.string().optional(),
 });
 

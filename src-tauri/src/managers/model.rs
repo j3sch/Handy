@@ -162,6 +162,22 @@ impl ModelManager {
             },
         );
 
+        // Add Gladia Whisper-Zero model (API-based)
+        available_models.insert(
+            "whisper-zero".to_string(),
+            ModelInfo {
+                id: "whisper-zero".to_string(),
+                name: "Whisper-Zero (Gladia API)".to_string(),
+                description: "Advanced Whisper model with fewer hallucinations via Gladia API - requires API key".to_string(),
+                filename: "".to_string(), // No file needed for API model
+                url: None,
+                size_mb: 0,
+                is_downloaded: true, // Always available when API key is set
+                is_downloading: false,
+                partial_size: 0,
+            },
+        );
+
         let manager = Self {
             app_handle,
             models_dir,

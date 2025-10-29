@@ -7,8 +7,8 @@ interface MuteWhileRecordingToggleProps {
   grouped?: boolean;
 }
 
-export const MuteWhileRecording: React.FC<MuteWhileRecordingToggleProps> = React.memo(
-  ({ descriptionMode = "tooltip", grouped = false }) => {
+export const MuteWhileRecording: React.FC<MuteWhileRecordingToggleProps> =
+  React.memo(({ descriptionMode = "tooltip", grouped = false }) => {
     const { getSetting, updateSetting, isUpdating } = useSettings();
 
     const muteEnabled = getSetting("mute_while_recording") ?? false;
@@ -18,11 +18,10 @@ export const MuteWhileRecording: React.FC<MuteWhileRecordingToggleProps> = React
         checked={muteEnabled}
         onChange={(enabled) => updateSetting("mute_while_recording", enabled)}
         isUpdating={isUpdating("mute_while_recording")}
-        label="Mute while recording"
+        label="Mute While Recording"
         description="Automatically mute all sound output while Handy is recording, then restore it when finished."
         descriptionMode={descriptionMode}
         grouped={grouped}
       />
     );
-  },
-);
+  });

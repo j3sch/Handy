@@ -134,7 +134,10 @@ export const useSettingsStore = create<SettingsStore>()(
     refreshSettings: async () => {
       try {
         const { load } = await import("@tauri-apps/plugin-store");
-        const store = await load("settings_store.json", { autoSave: false });
+        const store = await load("settings_store.json", {
+          autoSave: false,
+          defaults: {},
+        });
         const settings = (await store.get("settings")) as Settings;
 
         // Load additional settings that come from invoke calls
@@ -279,15 +282,15 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           settings: state.settings
             ? {
-                ...state.settings,
-                bindings: {
-                  ...state.settings.bindings,
-                  [id]: {
-                    ...state.settings.bindings[id],
-                    current_binding: binding,
-                  },
+              ...state.settings,
+              bindings: {
+                ...state.settings.bindings,
+                [id]: {
+                  ...state.settings.bindings[id],
+                  current_binding: binding,
                 },
-              }
+              },
+            }
             : null,
         }));
 
@@ -300,15 +303,15 @@ export const useSettingsStore = create<SettingsStore>()(
           set((state) => ({
             settings: state.settings
               ? {
-                  ...state.settings,
-                  bindings: {
-                    ...state.settings.bindings,
-                    [id]: {
-                      ...state.settings.bindings[id],
-                      current_binding: originalBinding,
-                    },
+                ...state.settings,
+                bindings: {
+                  ...state.settings.bindings,
+                  [id]: {
+                    ...state.settings.bindings[id],
+                    current_binding: originalBinding,
                   },
-                }
+                },
+              }
               : null,
           }));
         }

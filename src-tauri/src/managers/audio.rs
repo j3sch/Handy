@@ -4,7 +4,7 @@ use crate::utils;
 use log::{debug, info};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-use tauri::{App, Manager};
+use tauri::Manager;
 
 const WHISPER_SAMPLE_RATE: usize = 16000;
 
@@ -58,13 +58,14 @@ pub struct AudioRecordingManager {
     recorder: Arc<Mutex<Option<AudioRecorder>>>,
     is_open: Arc<Mutex<bool>>,
     is_recording: Arc<Mutex<bool>>,
+    initial_volume: Arc<Mutex<Option<u8>>>,
 }
 
 impl AudioRecordingManager {
     /* ---------- construction ------------------------------------------------ */
 
-    pub fn new(app: &App) -> Result<Self, anyhow::Error> {
-        let settings = get_settings(&app.handle());
+    pub fn new(app: &tauri::AppHandle) -> Result<Self, anyhow::Error> {
+        let settings = get_settings(app);
         let mode = if settings.always_on_microphone {
             MicrophoneMode::AlwaysOn
         } else {
@@ -74,11 +75,12 @@ impl AudioRecordingManager {
         let manager = Self {
             state: Arc::new(Mutex::new(RecordingState::Idle)),
             mode: Arc::new(Mutex::new(mode.clone())),
-            app_handle: app.handle().clone(),
+            app_handle: app.clone(),
 
             recorder: Arc::new(Mutex::new(None)),
             is_open: Arc::new(Mutex::new(false)),
             is_recording: Arc::new(Mutex::new(false)),
+            initial_volume: Arc::new(Mutex::new(None)),
         };
 
         // Always-on?  Open immediately.
@@ -99,6 +101,16 @@ impl AudioRecordingManager {
         }
 
         let start_time = Instant::now();
+
+        let settings = get_settings(&self.app_handle);
+        let mut initial_volume_guard = self.initial_volume.lock().unwrap();
+
+        if settings.mute_while_recording {
+            *initial_volume_guard = Some(cpvc::get_system_volume());
+            cpvc::set_system_volume(0);
+        } else {
+            *initial_volume_guard = None;
+        }
 
         let vad_path = self
             .app_handle
@@ -153,6 +165,12 @@ impl AudioRecordingManager {
         if !*open_flag {
             return;
         }
+
+        let mut initial_volume_guard = self.initial_volume.lock().unwrap();
+        if let Some(vol) = *initial_volume_guard {
+            cpvc::set_system_volume(vol);
+        }
+        *initial_volume_guard = None;
 
         if let Some(rec) = self.recorder.lock().unwrap().as_mut() {
             // If still recording, stop first.

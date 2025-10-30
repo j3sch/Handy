@@ -26,7 +26,9 @@ Handy isn't trying to be the best speech-to-text app—it's trying to be the mos
 
 The process is entirely local:
 - Silence is filtered using VAD (Voice Activity Detection) with Silero
-- Transcription uses Whisper Small model with GPU acceleration when available
+- Transcription uses your choice of models:
+  - **Whisper models** (Small/Medium/Turbo/Large) with GPU acceleration when available
+  - **Parakeet V3** - CPU-optimized model with excellent performance and automatic language detection
 - Works on Windows, macOS, and Linux
 
 ## Quick Start
@@ -51,28 +53,42 @@ Handy is built as a Tauri application combining:
 - **Backend**: Rust for system integration, audio processing, and ML inference
 - **Core Libraries**:
   - `whisper-rs`: Local speech recognition with Whisper models
+  - `transcription-rs`: CPU-optimized speech recognition with Parakeet models
   - `cpal`: Cross-platform audio I/O
   - `vad-rs`: Voice Activity Detection
   - `rdev`: Global keyboard shortcuts and system events
   - `rubato`: Audio resampling
+
+### Debug Mode
+
+Handy includes an advanced debug mode for development and troubleshooting. Access it by pressing:
+- **macOS**: `Cmd+Shift+D`
+- **Windows/Linux**: `Ctrl+Shift+D`
 
 ## Known Issues & Current Limitations
 
 This project is actively being developed and has some [known issues](https://github.com/cjpais/Handy/issues). We believe in transparency about the current state:
 
 ### Platform Support
-- **Apple Silicon Macs**
+- **macOS (both Intel and Apple Silicon)**
 - **x64 Windows**
 - **x64 Linux**
 
-### System Requirements/Recomendations
+### System Requirements/Recommendations
 
 The following are recommendations for running Handy on your own machine. If you don't meet the system requirements, the performance of the application may be degraded. We are working on improving the performance across all kinds of computers and hardware.
 
-- **macOS**: M series Mac
+**For Whisper Models:**
+- **macOS**: M series Mac, Intel Mac
 - **Windows**: Intel, AMD, or NVIDIA GPU
 - **Linux**: Intel, AMD, or NVIDIA GPU
   * Ubuntu 22.04, 24.04
+
+**For Parakeet V3 Model:**
+- **CPU-only operation** - runs on a wide variety of hardware
+- **Minimum**: Intel Skylake (6th gen) or equivalent AMD processors
+- **Performance**: ~5x real-time speed on mid-range hardware (tested on i5)
+- **Automatic language detection** - no manual language selection required
 
 ### How to Contribute
 

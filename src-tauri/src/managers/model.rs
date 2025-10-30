@@ -1,13 +1,28 @@
 use crate::settings::{get_settings, write_settings};
 use anyhow::Result;
+use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{App, AppHandle, Emitter, Manager};
+use tar::Archive;
+use tauri::{AppHandle, Emitter, Manager};
+
+pub const API_MODEL_IDS: [&str; 4] = ["voxtral-mini", "nova-3", "universal", "whisper-zero"];
+
+pub fn is_api_model(model_id: &str) -> bool {
+    API_MODEL_IDS.contains(&model_id)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum EngineType {
+    Whisper,
+    Parakeet,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelInfo {
@@ -20,6 +35,10 @@ pub struct ModelInfo {
     pub is_downloaded: bool,
     pub is_downloading: bool,
     pub partial_size: u64,
+    pub is_directory: bool,
+    pub engine_type: EngineType,
+    pub accuracy_score: f32, // 0.0 to 1.0, higher is more accurate
+    pub speed_score: f32,    // 0.0 to 1.0, higher is faster
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,11 +56,9 @@ pub struct ModelManager {
 }
 
 impl ModelManager {
-    pub fn new(app: &App) -> Result<Self> {
-        let app_handle = app.app_handle().clone();
-
+    pub fn new(app_handle: &AppHandle) -> Result<Self> {
         // Create models directory in app data
-        let models_dir = app
+        let models_dir = app_handle
             .path()
             .app_data_dir()
             .map_err(|e| anyhow::anyhow!("Failed to get app data dir: {}", e))?
@@ -53,18 +70,23 @@ impl ModelManager {
 
         let mut available_models = HashMap::new();
 
+        // TODO this should be read from a JSON file or something..
         available_models.insert(
             "small".to_string(),
             ModelInfo {
                 id: "small".to_string(),
                 name: "Whisper Small".to_string(),
-                description: "Fast and efficient, great for most use cases".to_string(),
+                description: "Fast and fairly accurate.".to_string(),
                 filename: "ggml-small.bin".to_string(),
                 url: Some("https://blob.handy.computer/ggml-small.bin".to_string()),
-                size_mb: 244,
+                size_mb: 487,
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.60,
+                speed_score: 0.85,
             },
         );
 
@@ -77,10 +99,14 @@ impl ModelManager {
                 description: "Good accuracy, medium speed".to_string(),
                 filename: "whisper-medium-q4_1.bin".to_string(),
                 url: Some("https://blob.handy.computer/whisper-medium-q4_1.bin".to_string()),
-                size_mb: 491, // Approximate size
+                size_mb: 492, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.75,
+                speed_score: 0.60,
             },
         );
 
@@ -96,6 +122,10 @@ impl ModelManager {
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.80,
+                speed_score: 0.40,
             },
         );
 
@@ -104,82 +134,139 @@ impl ModelManager {
             ModelInfo {
                 id: "large".to_string(),
                 name: "Whisper Large".to_string(),
-                description: "Highest accuracy, but slow.".to_string(),
+                description: "Good accuracy, but slow.".to_string(),
                 filename: "ggml-large-v3-q5_0.bin".to_string(),
                 url: Some("https://blob.handy.computer/ggml-large-v3-q5_0.bin".to_string()),
-                size_mb: 1080, // Approximate size
+                size_mb: 1100, // Approximate size
                 is_downloaded: false,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.85,
+                speed_score: 0.30,
             },
         );
 
-        // Add Mistral Voxtral Mini Transcribe model (API-based)
+        // Add NVIDIA Parakeet models (directory-based)
+        available_models.insert(
+            "parakeet-tdt-0.6b-v2".to_string(),
+            ModelInfo {
+                id: "parakeet-tdt-0.6b-v2".to_string(),
+                name: "Parakeet V2".to_string(),
+                description: "English only. The best model for English speakers.".to_string(),
+                filename: "parakeet-tdt-0.6b-v2-int8".to_string(), // Directory name
+                url: Some("https://blob.handy.computer/parakeet-v2-int8.tar.gz".to_string()),
+                size_mb: 473, // Approximate size for int8 quantized model
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: true,
+                engine_type: EngineType::Parakeet,
+                accuracy_score: 0.85,
+                speed_score: 0.85,
+            },
+        );
+
+        available_models.insert(
+            "parakeet-tdt-0.6b-v3".to_string(),
+            ModelInfo {
+                id: "parakeet-tdt-0.6b-v3".to_string(),
+                name: "Parakeet V3".to_string(),
+                description: "Fast and accurate".to_string(),
+                filename: "parakeet-tdt-0.6b-v3-int8".to_string(), // Directory name
+                url: Some("https://blob.handy.computer/parakeet-v3-int8.tar.gz".to_string()),
+                size_mb: 478, // Approximate size for int8 quantized model
+                is_downloaded: false,
+                is_downloading: false,
+                partial_size: 0,
+                is_directory: true,
+                engine_type: EngineType::Parakeet,
+                accuracy_score: 0.80,
+                speed_score: 0.85,
+            },
+        );
+
+        // Add API-based models
         available_models.insert(
             "voxtral-mini".to_string(),
             ModelInfo {
                 id: "voxtral-mini".to_string(),
                 name: "Voxtral Mini Transcribe (API)".to_string(),
-                description: "Fast cloud transcription via Mistral API - requires API key".to_string(),
-                filename: "".to_string(), // No file needed for API model
+                description: "Fast cloud transcription via Mistral API.".to_string(),
+                filename: "".to_string(),
                 url: None,
                 size_mb: 0,
-                is_downloaded: true, // Always available when API key is set
+                is_downloaded: true,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.80,
+                speed_score: 0.95,
             },
         );
 
-        // Add Deepgram Nova-3 model (API-based)
         available_models.insert(
             "nova-3".to_string(),
             ModelInfo {
                 id: "nova-3".to_string(),
                 name: "Nova-3 (Deepgram API)".to_string(),
-                description: "High-accuracy cloud transcription via Deepgram API - requires API key".to_string(),
-                filename: "".to_string(), // No file needed for API model
+                description: "High-accuracy cloud transcription via Deepgram API.".to_string(),
+                filename: "".to_string(),
                 url: None,
                 size_mb: 0,
-                is_downloaded: true, // Always available when API key is set
+                is_downloaded: true,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.90,
+                speed_score: 0.75,
             },
         );
 
-        // Add AssemblyAI Universal model (API-based)
         available_models.insert(
             "universal".to_string(),
             ModelInfo {
                 id: "universal".to_string(),
                 name: "Universal (AssemblyAI API)".to_string(),
-                description: "Universal speech recognition via AssemblyAI API - requires API key".to_string(),
-                filename: "".to_string(), // No file needed for API model
+                description: "Versatile speech recognition via AssemblyAI API.".to_string(),
+                filename: "".to_string(),
                 url: None,
                 size_mb: 0,
-                is_downloaded: true, // Always available when API key is set
+                is_downloaded: true,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.88,
+                speed_score: 0.70,
             },
         );
 
-        // Add Gladia Whisper-Zero model (API-based)
         available_models.insert(
             "whisper-zero".to_string(),
             ModelInfo {
                 id: "whisper-zero".to_string(),
                 name: "Whisper-Zero (Gladia API)".to_string(),
-                description: "Advanced Whisper model with fewer hallucinations via Gladia API - requires API key".to_string(),
-                filename: "".to_string(), // No file needed for API model
+                description: "Advanced Whisper model with fewer hallucinations via Gladia API."
+                    .to_string(),
+                filename: "".to_string(),
                 url: None,
                 size_mb: 0,
-                is_downloaded: true, // Always available when API key is set
+                is_downloaded: true,
                 is_downloading: false,
                 partial_size: 0,
+                is_directory: false,
+                engine_type: EngineType::Whisper,
+                accuracy_score: 0.85,
+                speed_score: 0.72,
             },
         );
 
         let manager = Self {
-            app_handle,
+            app_handle: app_handle.clone(),
             models_dir,
             available_models: Mutex::new(available_models),
         };
@@ -237,22 +324,50 @@ impl ModelManager {
         let mut models = self.available_models.lock().unwrap();
 
         for model in models.values_mut() {
-            // Skip API-based models
-            if model.id == "voxtral-mini" || model.id == "nova-3" {
+            if is_api_model(&model.id) {
+                model.is_downloaded = true;
+                model.is_downloading = false;
+                model.partial_size = 0;
                 continue;
             }
 
-            let model_path = self.models_dir.join(&model.filename);
-            let partial_path = self.models_dir.join(format!("{}.partial", &model.filename));
+            if model.is_directory {
+                // For directory-based models, check if the directory exists
+                let model_path = self.models_dir.join(&model.filename);
+                let partial_path = self.models_dir.join(format!("{}.partial", &model.filename));
+                let extracting_path = self
+                    .models_dir
+                    .join(format!("{}.extracting", &model.filename));
 
-            model.is_downloaded = model_path.exists();
-            model.is_downloading = partial_path.exists();
+                // Clean up any leftover .extracting directories from interrupted extractions
+                if extracting_path.exists() {
+                    println!("Cleaning up interrupted extraction for model: {}", model.id);
+                    let _ = fs::remove_dir_all(&extracting_path);
+                }
 
-            // Get partial file size if it exists
-            if partial_path.exists() {
-                model.partial_size = partial_path.metadata().map(|m| m.len()).unwrap_or(0);
+                model.is_downloaded = model_path.exists() && model_path.is_dir();
+                model.is_downloading = partial_path.exists();
+
+                // Get partial file size if it exists (for the .tar.gz being downloaded)
+                if partial_path.exists() {
+                    model.partial_size = partial_path.metadata().map(|m| m.len()).unwrap_or(0);
+                } else {
+                    model.partial_size = 0;
+                }
             } else {
-                model.partial_size = 0;
+                // For file-based models (existing logic)
+                let model_path = self.models_dir.join(&model.filename);
+                let partial_path = self.models_dir.join(format!("{}.partial", &model.filename));
+
+                model.is_downloaded = model_path.exists();
+                model.is_downloading = partial_path.exists();
+
+                // Get partial file size if it exists
+                if partial_path.exists() {
+                    model.partial_size = partial_path.metadata().map(|m| m.len()).unwrap_or(0);
+                } else {
+                    model.partial_size = 0;
+                }
             }
         }
 
@@ -286,6 +401,14 @@ impl ModelManager {
     }
 
     pub async fn download_model(&self, model_id: &str) -> Result<()> {
+        if is_api_model(model_id) {
+            println!(
+                "Skipping download for API-based model {} - no local files required",
+                model_id
+            );
+            return Ok(());
+        }
+
         let model_info = {
             let models = self.available_models.lock().unwrap();
             models.get(model_id).cloned()
@@ -428,31 +551,105 @@ impl ModelManager {
         file.flush()?;
         drop(file); // Ensure file is closed before moving
 
-        // Move partial file to final location
-        fs::rename(&partial_path, &model_path)?;
+        // Handle directory-based models (extract tar.gz) vs file-based models
+        if model_info.is_directory {
+            // Emit extraction started event
+            let _ = self.app_handle.emit("model-extraction-started", model_id);
+            println!("Extracting archive for directory-based model: {}", model_id);
 
-        // Update download status
+            // Use a temporary extraction directory to ensure atomic operations
+            let temp_extract_dir = self
+                .models_dir
+                .join(format!("{}.extracting", &model_info.filename));
+            let final_model_dir = self.models_dir.join(&model_info.filename);
+
+            // Clean up any previous incomplete extraction
+            if temp_extract_dir.exists() {
+                let _ = fs::remove_dir_all(&temp_extract_dir);
+            }
+
+            // Create temporary extraction directory
+            fs::create_dir_all(&temp_extract_dir)?;
+
+            // Open the downloaded tar.gz file
+            let tar_gz = File::open(&partial_path)?;
+            let tar = GzDecoder::new(tar_gz);
+            let mut archive = Archive::new(tar);
+
+            // Extract to the temporary directory first
+            archive.unpack(&temp_extract_dir).map_err(|e| {
+                let error_msg = format!("Failed to extract archive: {}", e);
+                // Clean up failed extraction
+                let _ = fs::remove_dir_all(&temp_extract_dir);
+                let _ = self.app_handle.emit(
+                    "model-extraction-failed",
+                    &serde_json::json!({
+                        "model_id": model_id,
+                        "error": error_msg
+                    }),
+                );
+                anyhow::anyhow!(error_msg)
+            })?;
+
+            // Find the actual extracted directory (archive might have a nested structure)
+            let extracted_dirs: Vec<_> = fs::read_dir(&temp_extract_dir)?
+                .filter_map(|entry| entry.ok())
+                .filter(|entry| entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
+                .collect();
+
+            if extracted_dirs.len() == 1 {
+                // Single directory extracted, move it to the final location
+                let source_dir = extracted_dirs[0].path();
+                if final_model_dir.exists() {
+                    fs::remove_dir_all(&final_model_dir)?;
+                }
+                fs::rename(&source_dir, &final_model_dir)?;
+                // Clean up temp directory
+                let _ = fs::remove_dir_all(&temp_extract_dir);
+            } else {
+                // Multiple items or no directories, rename the temp directory itself
+                if final_model_dir.exists() {
+                    fs::remove_dir_all(&final_model_dir)?;
+                }
+                fs::rename(&temp_extract_dir, &final_model_dir)?;
+            }
+
+            println!("Successfully extracted archive for model: {}", model_id);
+            // Emit extraction completed event
+            let _ = self.app_handle.emit("model-extraction-completed", model_id);
+
+            // Remove the downloaded tar.gz file
+            let _ = fs::remove_file(&partial_path);
+        } else {
+            // Move partial file to final location for file-based models
+            fs::rename(&partial_path, &model_path)?;
+        }
+
+        // Mark as downloaded
         {
             let mut models = self.available_models.lock().unwrap();
             if let Some(model) = models.get_mut(model_id) {
-                model.is_downloading = false;
                 model.is_downloaded = true;
+                model.is_downloading = false;
                 model.partial_size = 0;
             }
         }
 
-        // Emit completion event
+        // Emit download complete event
         let _ = self.app_handle.emit("model-download-complete", model_id);
-
-        println!(
-            "Successfully downloaded model {} to {:?}",
-            model_id, model_path
-        );
 
         Ok(())
     }
 
     pub fn delete_model(&self, model_id: &str) -> Result<()> {
+        if is_api_model(model_id) {
+            println!(
+                "Skipping delete for API-based model {} - no local files to remove",
+                model_id
+            );
+            return Ok(());
+        }
+
         println!("ModelManager: delete_model called for: {}", model_id);
 
         let model_info = {
@@ -474,15 +671,28 @@ impl ModelManager {
 
         let mut deleted_something = false;
 
-        // Delete complete model file if it exists
-        if model_path.exists() {
-            println!("ModelManager: Deleting model file at: {:?}", model_path);
-            fs::remove_file(&model_path)?;
-            println!("ModelManager: Model file deleted successfully");
-            deleted_something = true;
+        if model_info.is_directory {
+            // Delete complete model directory if it exists
+            if model_path.exists() && model_path.is_dir() {
+                println!(
+                    "ModelManager: Deleting model directory at: {:?}",
+                    model_path
+                );
+                fs::remove_dir_all(&model_path)?;
+                println!("ModelManager: Model directory deleted successfully");
+                deleted_something = true;
+            }
+        } else {
+            // Delete complete model file if it exists
+            if model_path.exists() {
+                println!("ModelManager: Deleting model file at: {:?}", model_path);
+                fs::remove_file(&model_path)?;
+                println!("ModelManager: Model file deleted successfully");
+                deleted_something = true;
+            }
         }
 
-        // Delete partial file if it exists
+        // Delete partial file if it exists (same for both types)
         if partial_path.exists() {
             println!("ModelManager: Deleting partial file at: {:?}", partial_path);
             fs::remove_file(&partial_path)?;
@@ -502,9 +712,11 @@ impl ModelManager {
     }
 
     pub fn get_model_path(&self, model_id: &str) -> Result<PathBuf> {
-        // API-based models don't have local files
-        if model_id == "voxtral-mini" || model_id == "nova-3" {
-            return Ok(PathBuf::new()); // Return empty path for API models
+        if is_api_model(model_id) {
+            return Err(anyhow::anyhow!(
+                "API-based models do not have a local file path: {}",
+                model_id
+            ));
         }
 
         let model_info = self
@@ -515,7 +727,7 @@ impl ModelManager {
             return Err(anyhow::anyhow!("Model not available: {}", model_id));
         }
 
-        // Ensure we don't return partial files
+        // Ensure we don't return partial files/directories
         if model_info.is_downloading {
             return Err(anyhow::anyhow!(
                 "Model is currently downloading: {}",
@@ -528,18 +740,38 @@ impl ModelManager {
             .models_dir
             .join(format!("{}.partial", &model_info.filename));
 
-        // Ensure we only return complete model files, not partial ones
-        if model_path.exists() && !partial_path.exists() {
-            Ok(model_path)
+        if model_info.is_directory {
+            // For directory-based models, ensure the directory exists and is complete
+            if model_path.exists() && model_path.is_dir() && !partial_path.exists() {
+                Ok(model_path)
+            } else {
+                Err(anyhow::anyhow!(
+                    "Complete model directory not found: {}",
+                    model_id
+                ))
+            }
         } else {
-            Err(anyhow::anyhow!(
-                "Complete model file not found: {}",
-                model_id
-            ))
+            // For file-based models (existing logic)
+            if model_path.exists() && !partial_path.exists() {
+                Ok(model_path)
+            } else {
+                Err(anyhow::anyhow!(
+                    "Complete model file not found: {}",
+                    model_id
+                ))
+            }
         }
     }
 
     pub fn cancel_download(&self, model_id: &str) -> Result<()> {
+        if is_api_model(model_id) {
+            println!(
+                "Skipping cancel for API-based model {} - no active download",
+                model_id
+            );
+            return Ok(());
+        }
+
         println!("ModelManager: cancel_download called for: {}", model_id);
 
         let _model_info = {

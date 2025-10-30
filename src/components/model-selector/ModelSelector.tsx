@@ -20,7 +20,14 @@ interface DownloadProgress {
   percentage: number;
 }
 
-type ModelStatus = "ready" | "loading" | "downloading" | "error" | "none";
+type ModelStatus =
+  | "ready"
+  | "loading"
+  | "downloading"
+  | "extracting"
+  | "error"
+  | "unloaded"
+  | "none";
 
 interface DownloadStats {
   startTime: number;
@@ -36,7 +43,7 @@ interface ModelSelectorProps {
 const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [currentModelId, setCurrentModelId] = useState<string>("");
-  const [modelStatus, setModelStatus] = useState<ModelStatus>("loading");
+  const [modelStatus, setModelStatus] = useState<ModelStatus>("unloaded");
   const [modelError, setModelError] = useState<string | null>(null);
   const [modelDownloadProgress, setModelDownloadProgress] = useState<
     Map<string, DownloadProgress>
@@ -45,6 +52,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
   const [downloadStats, setDownloadStats] = useState<
     Map<string, DownloadStats>
   >(new Map());
+  const [extractingModels, setExtractingModels] = useState<Set<string>>(
+    new Set(),
+  );
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +81,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
           case "loading_failed":
             setModelStatus("error");
             setModelError(error || "Failed to load model");
+            break;
+          case "unloaded":
+            setModelStatus("unloaded");
+            setModelError(null);
             break;
         }
       },
@@ -156,6 +170,49 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
       },
     );
 
+    // Listen for extraction events
+    const extractionStartedUnlisten = listen<string>(
+      "model-extraction-started",
+      (event) => {
+        const modelId = event.payload;
+        setExtractingModels((prev) => new Set(prev.add(modelId)));
+        setModelStatus("extracting");
+      },
+    );
+
+    const extractionCompletedUnlisten = listen<string>(
+      "model-extraction-completed",
+      (event) => {
+        const modelId = event.payload;
+        setExtractingModels((prev) => {
+          const next = new Set(prev);
+          next.delete(modelId);
+          return next;
+        });
+        loadModels(); // Refresh models list
+
+        // Auto-select the newly extracted model
+        setTimeout(() => {
+          loadCurrentModel();
+          handleModelSelect(modelId);
+        }, 500);
+      },
+    );
+
+    const extractionFailedUnlisten = listen<{model_id: string, error: string}>(
+      "model-extraction-failed",
+      (event) => {
+        const modelId = event.payload.model_id;
+        setExtractingModels((prev) => {
+          const next = new Set(prev);
+          next.delete(modelId);
+          return next;
+        });
+        setModelError(`Failed to extract model: ${event.payload.error}`);
+        setModelStatus("error");
+      },
+    );
+
     // Click outside to close dropdown
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -173,6 +230,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
       modelStateUnlisten.then((fn) => fn());
       downloadProgressUnlisten.then((fn) => fn());
       downloadCompleteUnlisten.then((fn) => fn());
+      extractionStartedUnlisten.then((fn) => fn());
+      extractionCompletedUnlisten.then((fn) => fn());
+      extractionFailedUnlisten.then((fn) => fn());
     };
   }, []);
 
@@ -198,7 +258,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
         if (transcriptionStatus === current) {
           setModelStatus("ready");
         } else {
-          setModelStatus("loading");
+          setModelStatus("unloaded");
         }
       } else {
         setModelStatus("none");
@@ -241,6 +301,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
   };
 
   const getModelDisplayText = (): string => {
+    if (extractingModels.size > 0) {
+      if (extractingModels.size === 1) {
+        const [modelId] = Array.from(extractingModels);
+        const model = models.find(m => m.id === modelId);
+        return `Extracting ${model?.name || 'Model'}...`;
+      } else {
+        return `Extracting ${extractingModels.size} models...`;
+      }
+    }
+
     if (modelDownloadProgress.size > 0) {
       if (modelDownloadProgress.size === 1) {
         const [progress] = Array.from(modelDownloadProgress.values());
@@ -261,12 +331,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({ onError }) => {
         return currentModel?.name || "Model Ready";
       case "loading":
         return currentModel ? `Loading ${currentModel.name}...` : "Loading...";
+      case "extracting":
+        return currentModel ? `Extracting ${currentModel.name}...` : "Extracting...";
       case "error":
         return modelError || "Model Error";
+      case "unloaded":
+        return currentModel?.name || "Model Unloaded";
       case "none":
         return "No Model - Download Required";
       default:
-        return currentModel?.name || "Select Model";
+        return currentModel?.name || "Model Unloaded";
     }
   };
 

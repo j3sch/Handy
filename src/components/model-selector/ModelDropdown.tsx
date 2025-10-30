@@ -20,6 +20,13 @@ interface ModelDropdownProps {
   onError?: (error: string) => void;
 }
 
+const API_MODELS = new Set<string>([
+  "voxtral-mini",
+  "nova-3",
+  "universal",
+  "whisper-zero",
+]);
+
 const ModelDropdown: React.FC<ModelDropdownProps> = ({
   models,
   currentModelId,
@@ -108,7 +115,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                   {currentModelId === model.id && (
                     <div className="text-xs text-logo-primary">Active</div>
                   )}
-                  {currentModelId !== model.id && !["voxtral-mini", "nova-3", "universal"].includes(model.id) && (
+                  {currentModelId !== model.id && !API_MODELS.has(model.id) && (
                     <button
                       onClick={(e) => handleDeleteClick(e, model.id)}
                       className="text-red-400 hover:text-red-300 p-1 hover:bg-red-500/10 rounded transition-colors"
@@ -127,7 +134,7 @@ const ModelDropdown: React.FC<ModelDropdownProps> = ({
                       </svg>
                     </button>
                   )}
-                  {currentModelId !== model.id && ["voxtral-mini", "nova-3", "universal"].includes(model.id) && (
+                  {currentModelId !== model.id && API_MODELS.has(model.id) && (
                     <div className="text-xs text-text/40">API</div>
                   )}
                 </div>

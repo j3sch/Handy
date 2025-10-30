@@ -33,6 +33,30 @@ pub enum ModelUnloadTimeout {
     Sec5, // Debug mode only
 }
 
+impl ModelUnloadTimeout {
+    pub fn to_minutes(self) -> Option<u64> {
+        match self {
+            ModelUnloadTimeout::Never => None,
+            ModelUnloadTimeout::Immediately => Some(0),
+            ModelUnloadTimeout::Min2 => Some(2),
+            ModelUnloadTimeout::Min5 => Some(5),
+            ModelUnloadTimeout::Min10 => Some(10),
+            ModelUnloadTimeout::Min15 => Some(15),
+            ModelUnloadTimeout::Hour1 => Some(60),
+            ModelUnloadTimeout::Sec5 => Some(0),
+        }
+    }
+
+    pub fn to_seconds(self) -> Option<u64> {
+        match self {
+            ModelUnloadTimeout::Never => None,
+            ModelUnloadTimeout::Immediately => Some(0),
+            ModelUnloadTimeout::Sec5 => Some(5),
+            _ => self.to_minutes().map(|m| m * 60),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum PasteMethod {

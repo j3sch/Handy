@@ -22,6 +22,7 @@ struct AssemblyAITranscriptStatus {
     error: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct AssemblyAIApiManager {
     app_handle: AppHandle,
     client: reqwest::Client,

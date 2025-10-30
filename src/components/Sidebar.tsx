@@ -1,11 +1,12 @@
 import React from "react";
-import { Cog, FlaskConical, History, Info } from "lucide-react";
+import { Cloud, Cog, FlaskConical, History, Info } from "lucide-react";
 import HandyTextLogo from "./icons/HandyTextLogo";
 import HandyHand from "./icons/HandyHand";
 import { useSettings } from "../hooks/useSettings";
 import {
   GeneralSettings,
   AdvancedSettings,
+  ApiSettings,
   HistorySettings,
   DebugSettings,
   AboutSettings,
@@ -39,6 +40,12 @@ export const SECTIONS_CONFIG = {
     label: "Advanced",
     icon: Cog,
     component: AdvancedSettings,
+    enabled: () => true,
+  },
+  cloud: {
+    label: "Cloud",
+    icon: Cloud,
+    component: ApiSettings,
     enabled: () => true,
   },
   history: {

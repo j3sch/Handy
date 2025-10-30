@@ -10,6 +10,7 @@ struct MistralTranscriptionResponse {
     text: String,
 }
 
+#[derive(Clone)]
 pub struct MistralApiManager {
     app_handle: AppHandle,
     client: reqwest::Client,
@@ -107,4 +108,3 @@ fn float_to_wav(audio_data: &[f32]) -> Result<Vec<u8>> {
     writer.finalize()?;
     Ok(cursor.into_inner())
 }
-

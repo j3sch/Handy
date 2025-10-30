@@ -1,4 +1,4 @@
-use crate::managers::model::{ModelInfo, ModelManager};
+use crate::managers::model::{is_api_model, ModelInfo, ModelManager};
 use crate::managers::transcription::TranscriptionManager;
 use crate::settings::{get_settings, write_settings};
 use std::sync::Arc;
@@ -53,7 +53,7 @@ pub async fn set_active_model(
         .ok_or_else(|| format!("Model not found: {}", model_id))?;
 
     // API models are always "downloaded" (available when API key is set)
-    if !model_info.is_downloaded && !["voxtral-mini", "nova-3", "universal", "whisper-zero"].contains(&model_id.as_str()) {
+    if !model_info.is_downloaded && !is_api_model(&model_id) {
         return Err(format!("Model not downloaded: {}", model_id));
     }
 
@@ -87,9 +87,7 @@ pub async fn get_transcription_model_status(
 pub async fn is_model_loading(
     transcription_manager: State<'_, Arc<TranscriptionManager>>,
 ) -> Result<bool, String> {
-    // Check if transcription manager has a loaded model
-    let current_model = transcription_manager.get_current_model();
-    Ok(current_model.is_none())
+    Ok(!transcription_manager.is_model_loaded())
 }
 
 #[tauri::command]

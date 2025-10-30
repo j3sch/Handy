@@ -24,6 +24,7 @@ struct DeepgramAlternative {
     transcript: String,
 }
 
+#[derive(Clone)]
 pub struct DeepgramApiManager {
     app_handle: AppHandle,
     client: reqwest::Client,

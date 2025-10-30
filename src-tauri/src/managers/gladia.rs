@@ -32,6 +32,7 @@ struct GladiaTranscription {
     full_transcript: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct GladiaApiManager {
     app_handle: AppHandle,
     client: reqwest::Client,
